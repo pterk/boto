@@ -14,13 +14,15 @@
 # THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
 # OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABIL-
 # ITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT
-# SHALL THE AUTHOR BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, 
+# SHALL THE AUTHOR BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
 # WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
 # IN THE SOFTWARE.
 
+import cgi
 import uuid
 import urllib
+import urlparse
 
 from boto.resultset import ResultSet
 
@@ -68,10 +70,18 @@ class InvalidationBatch(object):
         self.paths[k] = v
 
     def escape(self, p):
-        """Escape a path, make sure it begins with a slash and contains no invalid characters"""
-        if not p[0] == "/":
-            p = "/%s" % p
-        return urllib.quote(p)
+        """Escape a path, make sure it contains no invalid characters"""
+        parts = urlparse.urlparse(p)
+        path = urllib.quote(parts.path)
+        if parts.query:
+            quoted_params = []
+            params = cgi.parse_qs(parts.query)
+            for k, vals in params.iteritems():
+                for val in vals:
+                    quoted_params.append("{}={}".format(
+                        urllib.quote(k), urllib.quote(val)))
+            return "{}?{}".format(path, "&".join(quoted_params))
+        return path
 
     def to_xml(self):
         """Get this batch as XML"""
